@@ -72,7 +72,7 @@ app.post("/", (req, res) => {
   console.log("Apple Sign-In redirect POST received", req.body);
 
   const params = new URLSearchParams(req.body).toString();
-  const redirect = `intent://callback?${params}#Intent;package=com.example.app;scheme=signinwithapple;end`;
+  const redirect = `intent://callback?${params}#Intent;package=com.tray.evcharging;scheme=signinwithapple;end`;
 
   console.log(`Redirecting to ${redirect}`);
 
