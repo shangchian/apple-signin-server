@@ -68,6 +68,11 @@ app.post("/sign_in_with_apple", async (request, response) => {
   response.json({ sessionId: sessionID });
 });
 
+app.post("/", (req, res) => {
+  console.log("Apple POST / received", req.body);
+  res.send("✅ Apple Sign-in callback received.");
+});
+
 // listen for requests :)
 const listener = app.listen(process.env.PORT, () => {
   console.log("Your app is listening on port " + listener.address().port);
