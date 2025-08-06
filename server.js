@@ -71,12 +71,14 @@ app.post("/sign_in_with_apple", async (request, response) => {
 app.post("/", (req, res) => {
   console.log("Apple Sign-In redirect POST received", req.body);
 
-  const params = new URLSearchParams(req.body).toString();
-  const redirect = `intent://callback?${params}#Intent;package=com.tray.evcharging;scheme=signinwithapple;end`;
+  const code = encodeURIComponent(req.body.code || '');
+  const id_token = encodeURIComponent(req.body.id_token || '');
+  const state = encodeURIComponent(req.body.state || '');
 
-  console.log(`Redirecting to ${redirect}`);
+  const redirect = `intent://callback?code=${code}&id_token=${id_token}&state=${state}#Intent;package=com.tray.evcharging;scheme=signinwithapple;end`;
 
-  res.redirect(307, redirect); // 讓 Chrome Custom Tab 自動關閉並返回 App
+  console.log(`Redirecting to: ${redirect}`);
+  res.redirect(307, redirect);
 });
 
 // listen for requests :)
