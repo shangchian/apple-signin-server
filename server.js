@@ -4,7 +4,9 @@ const admin = require("firebase-admin");
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
 
-const serviceAccount = require("./traycharging-f8183-firebase-adminsdk-53aei-4e19159e31.json");
+const serviceAccount = JSON.parse(
+  Buffer.from(process.env.FIREBASE_ADMIN_CREDENTIALS_BASE64, 'base64').toString('utf8')
+);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
