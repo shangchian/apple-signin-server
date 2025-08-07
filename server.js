@@ -1,87 +1,58 @@
-// server.js
-// where your node app starts
-
 const express = require("express");
-const AppleAuth = require("apple-auth");
-const jwt = require("jsonwebtoken");
 const bodyParser = require("body-parser");
+const admin = require("firebase-admin");
+const jwt = require("jsonwebtoken");
+const cors = require("cors");
+
+const serviceAccount = require("./traycharging-f8183-firebase-adminsdk-53aei-4e19159e31.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
 
 const app = express();
-
+app.use(cors());
+app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
-// The callback route used for Android, which will send the callback parameters from Apple into the Android app.
-// This is done using a deeplink, which will cause the Chrome Custom Tab to be dismissed and providing the parameters from Apple back to the app.
-app.post("/callbacks/sign_in_with_apple", (request, response) => {
-  const redirect = `intent://callback?${new URLSearchParams(
-    request.body
-  ).toString()}#Intent;package=${
-    process.env.ANDROID_PACKAGE_IDENTIFIER
-  };scheme=signinwithapple;end`;
+app.post("/sign_in_with_apple", async (req, res) => {
+  try {
+    const { id_token } = req.body;
+    if (!id_token) {
+      return res.status(400).json({ error: "Missing id_token" });
+    }
 
-  console.log(`Redirecting to ${redirect}`);
+    const decoded = jwt.decode(id_token, { complete: true });
+    if (!decoded) {
+      return res.status(400).json({ error: "Invalid id_token" });
+    }
 
-  response.redirect(307, redirect);
+    const appleSub = decoded.payload.sub;
+    const email = decoded.payload.email;
+    const firebaseUid = `apple:${appleSub}`;
+
+    await admin.auth().updateUser(firebaseUid, {
+      email: email,
+    }).catch(async (error) => {
+      if (error.code === 'auth/user-not-found') {
+        await admin.auth().createUser({
+          uid: firebaseUid,
+          email: email,
+        });
+      } else {
+        throw error;
+      }
+    });
+
+    const customToken = await admin.auth().createCustomToken(firebaseUid);
+    return res.json({ customToken });
+  } catch (error) {
+    console.error("Error during Apple sign-in:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
 });
 
-// Endpoint for the app to login or register with the `code` obtained during Sign in with Apple
-//
-// Use this endpoint to exchange the code (which must be validated with Apple within 5 minutes) for a session in your system
-app.post("/sign_in_with_apple", async (request, response) => {
-  const auth = new AppleAuth(
-    {
-      // use the bundle ID as client ID for native apps, else use the service ID for web-auth flows
-      // https://forums.developer.apple.com/thread/118135
-      client_id:
-        request.query.useBundleId === "true"
-          ? process.env.BUNDLE_ID
-          : process.env.SERVICE_ID,
-      team_id: process.env.TEAM_ID,
-      redirect_uri:
-        "https://flutter-sign-in-with-apple-example.glitch.me/callbacks/sign_in_with_apple",
-      // redirect_uri: "https://siwa-flutter-plugin.dev/", // use the one which was used for the initial load
-      key_id: process.env.KEY_ID
-    },
-    process.env.KEY_CONTENTS.replace(/\|/g, "\n"),
-    "text"
-  );
-
-  console.log(request.query);
-
-  const accessToken = await auth.accessToken(request.query.code);
-
-  const idToken = jwt.decode(accessToken.id_token);
-
-  const userID = idToken.sub;
-
-  console.log(idToken);
-
-  // `userEmail` and `userName` will only be provided for the initial authorization with your app
-  const userEmail = idToken.email;
-  const userName = `${request.query.firstName} ${request.query.lastName}`;
-
-  // 👷🏻‍♀️ TODO: Use the values provided create a new session for the user in your system
-  const sessionID = `NEW SESSION ID for ${userID} / ${userEmail} / ${userName}`;
-
-  console.log(`sessionID = ${sessionID}`);
-
-  response.json({ sessionId: sessionID });
-});
-
-app.post("/", (req, res) => {
-  console.log("Apple Sign-In redirect POST received", req.body);
-
-  const code = encodeURIComponent(req.body.code || '');
-  const id_token = encodeURIComponent(req.body.id_token || '');
-  const state = encodeURIComponent(req.body.state || '');
-
-  const redirect = `intent://callback?code=${code}&id_token=${id_token}&state=${state}#Intent;package=com.tray.evcharging;scheme=signinwithapple;end`;
-
-  console.log(`Redirecting to: ${redirect}`);
-  res.redirect(307, redirect);
-});
-
-// listen for requests :)
-const listener = app.listen(process.env.PORT, () => {
-  console.log("Your app is listening on port " + listener.address().port);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`✅ Apple Sign-In server listening on port ${PORT}`);
 });
