@@ -54,19 +54,18 @@ app.post("/sign_in_with_apple", async (req, res) => {
   }
 });
 
-app.get("/", (req, res) => {
-  res.send(`
-    <html>
-      <body>
-        <h2>登入成功，請返回 App</h2>
-        <script>
-          setTimeout(() => {
-            window.location.href = "signinwithapple://callback";
-          }, 500);
-        </script>
-      </body>
-    </html>
-  `);
+app.post("/apple/login/callback", (req, res) => {
+  // 將所有表單欄位組成 Query String
+  const params = Object.entries(req.body)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&');
+
+  // 構造 Android intent:// URI，package 填 Flutter App 的 applicationId
+  const intentUri = `intent://callback?${params}\
+#Intent;scheme=signinwithapple;package=com.trayevcharging.service;end`;
+
+  // 重定向到 intent://，Chrome Custom Tabs 會識別並返回 App
+  return res.redirect(intentUri);
 });
 
 const PORT = process.env.PORT || 3000;
