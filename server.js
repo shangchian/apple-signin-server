@@ -61,8 +61,7 @@ app.post("/apple/login/callback", (req, res) => {
     .join('&');
 
   // 構造 Android intent:// URI，package 填 Flutter App 的 applicationId
-  const intentUri = `intent://callback?${params}\
-#Intent;scheme=signinwithapple;package=com.trayevcharging.service;end`;
+  const intentUri = `intent://callback?${params}#Intent;scheme=signinwithapple;end`;
 
   // 重定向到 intent://，Chrome Custom Tabs 會識別並返回 App
   return res.redirect(intentUri);
