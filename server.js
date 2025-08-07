@@ -54,6 +54,21 @@ app.post("/sign_in_with_apple", async (req, res) => {
   }
 });
 
+app.get("/", (req, res) => {
+  res.send(`
+    <html>
+      <body>
+        <h2>登入成功，請返回 App</h2>
+        <script>
+          setTimeout(() => {
+            window.location.href = "signinwithapple://callback";
+          }, 500);
+        </script>
+      </body>
+    </html>
+  `);
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Apple Sign-In server listening on port ${PORT}`);
